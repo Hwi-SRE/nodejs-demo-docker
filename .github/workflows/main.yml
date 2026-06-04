@@ -1,13 +1,11 @@
 name: Manual Trigger Demo
 
 on:
-  push:
-    branches:
-      - main
-
+  workflow_dispatch:
+    
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Show trigger message
-        run: echo "✅ Deployment successfully finished!"
+        run: echo "✅ Deployment successfully finished!-v2"
