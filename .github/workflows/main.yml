@@ -1,0 +1,11 @@
+name: Manual Trigger Demo
+
+on:
+  workflow_dispatch:    # Allows manual triggering via GitHub API/UI
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show trigger message
+        run: echo "✅ Workflow triggered successfully from MCP GitHub chat!"
