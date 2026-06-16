@@ -23,6 +23,10 @@ env:
   JF_PROJECT: ${{ vars.JF_PROJECT }}
   JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
   NODE_VERSION: '18'
+  
+  # Build bilgileri için yeni environment variable'lar
+  JF_BUILD_NAME: "angular-app-build"
+  JF_BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
   build-and-deploy:
@@ -41,7 +45,6 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Basit Angular build (development varsayılan)
       - name: Build Angular Project
         run: npm run build
 
@@ -56,27 +59,44 @@ jobs:
             --interactive=false
           jf config use manual-jfrog
 
+      # 1️⃣ Build'e başlangıç bilgilerini ekle (Git commit, branch vb.)
+      - name: Add Git Info to Build
+        run: |
+          jf rt build-add-git \
+            --build-name "${{ env.JF_BUILD_NAME }}" \
+            --build-number "${{ env.JF_BUILD_NUMBER }}"
+
       - name: Upload Artifacts to JFrog Artifactory
         run: |
           VERSION_TAG="${{ github.event.inputs.version || github.sha }}"
           ENV_NAME="${{ github.event.inputs.environment || 'dev' }}"
           
-          # Angular build çıktısı genelde dist/ altına gelir
           ARTIFACT_PATH="dist/"
-          
-          # HEDEF REPO ADINI KENDİ REPONUZA GÖRE DEĞİŞTİRİN!
           TARGET_REPO="git-repo"  
           TARGET_PATH="${TARGET_REPO}/angular-builds/${ENV_NAME}/${VERSION_TAG}/"
           
           echo "📦 Yükleniyor: ${ARTIFACT_PATH} -> ${TARGET_PATH}"
           
+          # 2️⃣ Artifact'leri yükle ve aynı anda build'e bağla
           jf rt upload \
+            --build-name "${{ env.JF_BUILD_NAME }}" \
+            --build-number "${{ env.JF_BUILD_NUMBER }}" \
             --project "${{ env.JF_PROJECT }}" \
             --recursive \
             "${ARTIFACT_PATH}**" \
             "${TARGET_PATH}"
           
-          echo "✅ Yükleme tamamlandı! ${JF_URL}/artifactory/${TARGET_PATH}"
+          echo "✅ Yükleme tamamlandı! https://${JF_URL}/artifactory/${TARGET_PATH}"
+
+      # 3️⃣ Build bilgilerini Artifactory'ye yayınla (PUBLISH)
+      - name: Publish Build Info to JFrog
+        run: |
+          jf rt build-publish \
+            --build-name "${{ env.JF_BUILD_NAME }}" \
+            --build-number "${{ env.JF_BUILD_NUMBER }}" \
+            --project "${{ env.JF_PROJECT }}"
+          
+          echo "✅ Build info published! Build URL: https://${JF_URL}/ui/builds/${JF_BUILD_NAME}/${JF_BUILD_NUMBER}"
 
       - name: Show Completion Message
         run: echo "✅ Deployment successfully finished!-v2"
