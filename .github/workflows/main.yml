@@ -57,7 +57,6 @@ jobs:
             --interactive=false
           jf config use manual-jfrog
 
-      # ✅ DÜZELTİLDİ: build-add-git doğru argüman formatıyla kullanıldı
       - name: Add Git Info to Build
         run: |
           jf rt build-add-git "${{ env.JF_BUILD_NAME }}" "${{ env.JF_BUILD_NUMBER }}" .
@@ -83,11 +82,10 @@ jobs:
           
           echo "✅ Yükleme tamamlandı! https://${JF_URL}/artifactory/${TARGET_PATH}"
 
+      # ✅ DÜZELTİLDİ: build-publish doğru argüman formatıyla kullanıldı
       - name: Publish Build Info to JFrog
         run: |
-          jf rt build-publish \
-            --build-name "${{ env.JF_BUILD_NAME }}" \
-            --build-number "${{ env.JF_BUILD_NUMBER }}" \
+          jf rt build-publish "${{ env.JF_BUILD_NAME }}" "${{ env.JF_BUILD_NUMBER }}" \
             --project "${{ env.JF_PROJECT }}"
           
           echo "✅ Build info published! Build URL: https://${JF_URL}/ui/builds/${JF_BUILD_NAME}/${JF_BUILD_NUMBER}"
