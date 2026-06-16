@@ -65,7 +65,7 @@ jobs:
           ARTIFACT_PATH="dist/"
           
           # HEDEF REPO ADINI KENDİ REPONUZA GÖRE DEĞİŞTİRİN!
-          TARGET_REPO="generic-local"  
+          TARGET_REPO="git-repo"  
           TARGET_PATH="${TARGET_REPO}/angular-builds/${ENV_NAME}/${VERSION_TAG}/"
           
           echo "📦 Yükleniyor: ${ARTIFACT_PATH} -> ${TARGET_PATH}"
