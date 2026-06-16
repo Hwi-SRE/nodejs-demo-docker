@@ -43,7 +43,7 @@ jobs:
 
       # ✅ DÜZELTİLEN ADIM: --prod yerine --configuration production kullanıldı
       - name: Build Angular Project
-        run: npx ng build --configuration production
+        run: npx ng build
 
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
