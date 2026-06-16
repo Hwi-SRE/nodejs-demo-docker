@@ -51,7 +51,7 @@ jobs:
       - name: Configure JFrog CLI
         run: |
           jf config add manual-jfrog \
-            --url ${{ env.JF_URL }} \
+            --url https://${{ env.JF_URL }} \
             --access-token ${{ env.JF_ACCESS_TOKEN }} \
             --interactive=false
           jf config use manual-jfrog
