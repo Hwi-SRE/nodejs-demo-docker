@@ -1,7 +1,7 @@
 FROM node:latest as node
 WORKDIR /app
 COPY . .
-RUN npm insall
+RUN npm install
 RUN npm run build --prod
 
 
