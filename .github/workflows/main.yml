@@ -23,8 +23,6 @@ env:
   JF_PROJECT: ${{ vars.JF_PROJECT }}
   JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
   NODE_VERSION: '18'
-  
-  # Build bilgileri için yeni environment variable'lar
   JF_BUILD_NAME: "angular-app-build"
   JF_BUILD_NUMBER: ${{ github.run_number }}
 
@@ -59,12 +57,10 @@ jobs:
             --interactive=false
           jf config use manual-jfrog
 
-      # 1️⃣ Build'e başlangıç bilgilerini ekle (Git commit, branch vb.)
+      # ✅ DÜZELTİLDİ: build-add-git doğru argüman formatıyla kullanıldı
       - name: Add Git Info to Build
         run: |
-          jf rt build-add-git \
-            --build-name "${{ env.JF_BUILD_NAME }}" \
-            --build-number "${{ env.JF_BUILD_NUMBER }}"
+          jf rt build-add-git "${{ env.JF_BUILD_NAME }}" "${{ env.JF_BUILD_NUMBER }}" .
 
       - name: Upload Artifacts to JFrog Artifactory
         run: |
@@ -77,7 +73,6 @@ jobs:
           
           echo "📦 Yükleniyor: ${ARTIFACT_PATH} -> ${TARGET_PATH}"
           
-          # 2️⃣ Artifact'leri yükle ve aynı anda build'e bağla
           jf rt upload \
             --build-name "${{ env.JF_BUILD_NAME }}" \
             --build-number "${{ env.JF_BUILD_NUMBER }}" \
@@ -88,7 +83,6 @@ jobs:
           
           echo "✅ Yükleme tamamlandı! https://${JF_URL}/artifactory/${TARGET_PATH}"
 
-      # 3️⃣ Build bilgilerini Artifactory'ye yayınla (PUBLISH)
       - name: Publish Build Info to JFrog
         run: |
           jf rt build-publish \
