@@ -80,7 +80,7 @@ jobs:
           name: node-modules
           path: node_modules/
       - name: Build Angular Project
-        run: npm run build
+        run: npx ng build
       - name: Save Build Output
         uses: actions/upload-artifact@v4
         with:
