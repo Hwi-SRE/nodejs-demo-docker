@@ -1,6 +1,7 @@
-name: Manual Angular Build & Deploy to JFrog
+name: CI Build, Test & Deploy
 
 on:
+
   workflow_dispatch:
     inputs:
       version:
@@ -27,12 +28,14 @@ env:
   JF_BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
-  build-and-deploy:
+  build-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -43,8 +46,49 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint --if-present
+
       - name: Build Angular Project
-        run: npm run build
+        run: npx ng build
+
+      - name: Run Unit Tests
+        run: npm test -- --no-watch --no-progress --browsers=ChromeHeadlessNoSandbox --code-coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 5
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 5
+
+  deploy-to-jfrog:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
@@ -65,13 +109,13 @@ jobs:
         run: |
           VERSION_TAG="${{ github.event.inputs.version || github.sha }}"
           ENV_NAME="${{ github.event.inputs.environment || 'dev' }}"
-          
+
           ARTIFACT_PATH="dist/"
-          TARGET_REPO="git-repo"  
+          TARGET_REPO="git-repo"
           TARGET_PATH="${TARGET_REPO}/angular-builds/${ENV_NAME}/${VERSION_TAG}/"
-          
-          echo "📦 Yükleniyor: ${ARTIFACT_PATH} -> ${TARGET_PATH}"
-          
+
+          echo "Uploading: ${ARTIFACT_PATH} -> ${TARGET_PATH}"
+
           jf rt upload \
             --build-name "${{ env.JF_BUILD_NAME }}" \
             --build-number "${{ env.JF_BUILD_NUMBER }}" \
@@ -79,16 +123,12 @@ jobs:
             --recursive \
             "${ARTIFACT_PATH}**" \
             "${TARGET_PATH}"
-          
-          echo "✅ Yükleme tamamlandı! https://${JF_URL}/artifactory/${TARGET_PATH}"
 
-      # ✅ DÜZELTİLDİ: build-publish doğru argüman formatıyla kullanıldı
+          echo "Upload complete! https://${JF_URL}/artifactory/${TARGET_PATH}"
+
       - name: Publish Build Info to JFrog
         run: |
           jf rt build-publish "${{ env.JF_BUILD_NAME }}" "${{ env.JF_BUILD_NUMBER }}" \
             --project "${{ env.JF_PROJECT }}"
-          
-          echo "✅ Build info published! Build URL: https://${JF_URL}/ui/builds/${JF_BUILD_NAME}/${JF_BUILD_NUMBER}"
 
-      - name: Show Completion Message
-        run: echo "✅ Deployment successfully finished!-v2"
+          echo "Build info published! Build URL: https://${JF_URL}/ui/builds/${JF_BUILD_NAME}/${JF_BUILD_NUMBER}"
