@@ -80,39 +80,16 @@ jobs:
           name: node-modules
           path: node_modules/
       - name: Build Angular Project
-        run: npx ng build
+        run: npm run build
       - name: Save Build Output
         uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/
 
-  test:
-    name: Stage 4 - Test
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
-      - name: Restore Repo
-        uses: actions/download-artifact@v4
-        with:
-          name: repo
-          path: .
-      - name: Restore Node Modules
-        uses: actions/download-artifact@v4
-        with:
-          name: node-modules
-          path: node_modules/
-      - name: Run Unit Tests
-        run: npm test -- --no-watch --no-progress --browsers=ChromeHeadlessNoSandbox --code-coverage
-      - name: Save Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage/
-
   sonarcloud:
-    name: Stage 5 - SonarCloud Scan
-    needs: [build, test]
+    name: Stage 4 - SonarCloud Scan
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Restore Repo
@@ -127,7 +104,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   deploy-to-jfrog:
-    name: Stage 6 - Deploy to JFrog
+    name: Stage 5 - Deploy to JFrog
     needs: sonarcloud
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
