@@ -1,7 +1,6 @@
-name: CI Build, Test & Deploy
+name: AoE2 Unit Browser CI/CD
 
 on:
-
   workflow_dispatch:
     inputs:
       version:
@@ -28,57 +27,118 @@ env:
   JF_BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
-  build-and-test:
+  checkout:
+    name: Stage 1 - Checkout
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Save Repo
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo
+          path: .
 
+  install:
+    name: Stage 2 - Install Dependencies
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore Repo
+        uses: actions/download-artifact@v4
+        with:
+          name: repo
+          path: .
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-
       - name: Install Dependencies
         run: npm ci
+      - name: Save Node Modules
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-modules
+          path: node_modules/
 
+  build:
+    name: Stage 3 - Build
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore Repo
+        uses: actions/download-artifact@v4
+        with:
+          name: repo
+          path: .
+      - name: Restore Node Modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules
+          path: node_modules/
       - name: Build Angular Project
         run: npx ng build
+      - name: Save Build Output
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
+  test:
+    name: Stage 4 - Test
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore Repo
+        uses: actions/download-artifact@v4
+        with:
+          name: repo
+          path: .
+      - name: Restore Node Modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node-modules
+          path: node_modules/
+      - name: Run Unit Tests
+        run: npm test -- --no-watch --no-progress --browsers=ChromeHeadlessNoSandbox --code-coverage
+      - name: Save Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+
+  sonarcloud:
+    name: Stage 5 - SonarCloud Scan
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore Repo
+        uses: actions/download-artifact@v4
+        with:
+          name: repo
+          path: .
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 5
-
-      - name: Upload Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage/
-          retention-days: 5
-
   deploy-to-jfrog:
-    needs: build-and-test
+    name: Stage 6 - Deploy to JFrog
+    needs: sonarcloud
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Download Build Artifacts
+      - name: Restore Repo
+        uses: actions/download-artifact@v4
+        with:
+          name: repo
+          path: .
+      - name: Restore Build Output
         uses: actions/download-artifact@v4
         with:
           name: dist
